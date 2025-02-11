@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Card } from './entities/card.entity';
@@ -103,29 +103,80 @@ export class CardsService {
 
   async getMonthlyPayments(cardId: string, user: User): Promise<any[]> {
     const expenses = await this.getExpenses(cardId, user);
-
     const monthlyPayments = new Map<string, number>();
 
     expenses.forEach((expense) => {
       const { installmentAmount, installments, firstPaymentDate, isRecurring } =
         expense;
       const months = isRecurring ? 12 : installments;
+      const amount = Number(installmentAmount);
 
       for (let i = 0; i < months; i++) {
         const paymentDate = addMonths(new Date(firstPaymentDate), i);
-        const monthKey = paymentDate.toISOString().slice(0, 7); // YYYY-MM format
+        const monthKey = paymentDate.toISOString().slice(0, 7);
 
         const currentAmount = monthlyPayments.get(monthKey) || 0;
-        monthlyPayments.set(monthKey, currentAmount + installmentAmount);
+        monthlyPayments.set(monthKey, currentAmount + amount);
       }
     });
 
-    // Convert to array and sort by month
     return Array.from(monthlyPayments.entries())
       .map(([month, totalAmount]) => ({
         month,
-        totalAmount,
+        totalAmount: Number(totalAmount.toFixed(2)),
       }))
       .sort((a, b) => a.month.localeCompare(b.month));
+  }
+
+  async updateExpense(
+    cardId: string,
+    expenseId: string,
+    updateCardExpenseDto: CreateCardExpenseDto,
+    user: User,
+  ): Promise<CardExpense> {
+    const card = await this.findOne(cardId, user);
+    const expense = await this.cardExpensesRepository.findOne({
+      where: { id: expenseId, card: { id: card.id } },
+    });
+
+    if (!expense) {
+      throw new NotFoundException('Gasto no encontrado');
+    }
+
+    const firstPaymentDate = new Date(updateCardExpenseDto.firstPaymentDate);
+    const { closingDate, dueDate } = this.calculateClosingAndDueDates(
+      firstPaymentDate,
+      card.closingDay,
+      card.dueDay,
+    );
+
+    Object.assign(expense, {
+      ...updateCardExpenseDto,
+      totalAmount:
+        updateCardExpenseDto.installmentAmount *
+        updateCardExpenseDto.installments,
+      firstPaymentDate,
+      closingDate,
+      dueDate,
+    });
+
+    return this.cardExpensesRepository.save(expense);
+  }
+
+  async deleteExpense(
+    cardId: string,
+    expenseId: string,
+    user: User,
+  ): Promise<void> {
+    const card = await this.findOne(cardId, user);
+    const expense = await this.cardExpensesRepository.findOne({
+      where: { id: expenseId, card: { id: card.id } },
+    });
+
+    if (!expense) {
+      throw new NotFoundException('Gasto no encontrado');
+    }
+
+    await this.cardExpensesRepository.remove(expense);
   }
 }

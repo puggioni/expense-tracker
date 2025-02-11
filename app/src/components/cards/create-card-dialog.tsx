@@ -64,10 +64,14 @@ const formSchema = z.object({
 });
 
 interface CreateCardDialogProps {
+  cardId: string;
   onCardCreated: () => void;
 }
 
-export function CreateCardDialog({ onCardCreated }: CreateCardDialogProps) {
+export function CreateCardDialog({
+  cardId,
+  onCardCreated,
+}: CreateCardDialogProps) {
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
 

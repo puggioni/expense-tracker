@@ -55,3 +55,16 @@ export interface AuthResponse {
   user: User;
   token: string;
 }
+
+export interface CardExpense {
+  id: string;
+  description: string;
+  installmentAmount: number;
+  installments: number;
+  totalAmount: number;
+  isRecurring: boolean;
+  firstPaymentDate: string;
+  closingDate: string;
+  dueDate: string;
+  isPaid: boolean;
+}

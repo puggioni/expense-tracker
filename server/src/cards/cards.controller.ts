@@ -1,4 +1,13 @@
-import { Controller, Get, Post, Body, Param, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  UseGuards,
+  Patch,
+  Delete,
+} from '@nestjs/common';
 import { CardsService } from './cards.service';
 import { CreateCardDto } from './dto/create-card.dto';
 import { CreateCardExpenseDto } from './dto/create-card-expense.dto';
@@ -43,5 +52,29 @@ export class CardsController {
   @Get(':id/expenses/monthly')
   getMonthlyPayments(@Param('id') id: string, @GetUser() user: User) {
     return this.cardsService.getMonthlyPayments(id, user);
+  }
+
+  @Patch(':id/expenses/:expenseId')
+  updateExpense(
+    @Param('id') id: string,
+    @Param('expenseId') expenseId: string,
+    @Body() updateCardExpenseDto: CreateCardExpenseDto,
+    @GetUser() user: User,
+  ) {
+    return this.cardsService.updateExpense(
+      id,
+      expenseId,
+      updateCardExpenseDto,
+      user,
+    );
+  }
+
+  @Delete(':id/expenses/:expenseId')
+  deleteExpense(
+    @Param('id') id: string,
+    @Param('expenseId') expenseId: string,
+    @GetUser() user: User,
+  ) {
+    return this.cardsService.deleteExpense(id, expenseId, user);
   }
 }
