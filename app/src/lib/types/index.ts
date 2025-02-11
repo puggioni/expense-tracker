@@ -68,3 +68,14 @@ export interface CardExpense {
   dueDate: string;
   isPaid: boolean;
 }
+
+export interface Card {
+  id: string;
+  name: string;
+  bank: string;
+  lastFourDigits: string;
+  creditLimit: number;
+  color: "blue" | "black" | "green" | "red";
+  closingDay: number;
+  dueDay: number;
+}

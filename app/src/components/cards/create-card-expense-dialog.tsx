@@ -48,10 +48,10 @@ const formSchema = z.object({
     .number()
     .min(1, "El número de cuotas debe ser mayor a 0"),
   isRecurring: z.boolean(),
-  firstPaymentDate: z.date({
-    required_error: "La fecha del primer pago es requerida",
-  }),
+  startMonth: z.string().min(1, "El mes de inicio es requerido"), // YYYY-MM format
 });
+
+type FormValues = z.infer<typeof formSchema>;
 
 interface CardExpenseDialogProps {
   cardId: string;
@@ -71,14 +71,14 @@ export function CardExpenseDialog({
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const form = useForm<z.infer<typeof formSchema>>({
+  const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       description: "",
       installmentAmount: 0,
       installments: 1,
       isRecurring: false,
-      firstPaymentDate: new Date(),
+      startMonth: format(new Date(), "yyyy-MM"),
     },
   });
 
@@ -89,35 +89,24 @@ export function CardExpenseDialog({
         installmentAmount: Number(expense.installmentAmount),
         installments: expense.installments,
         isRecurring: expense.isRecurring,
-        firstPaymentDate: new Date(expense.firstPaymentDate),
-      });
-    } else {
-      form.reset({
-        description: "",
-        installmentAmount: 0,
-        installments: 1,
-        isRecurring: false,
-        firstPaymentDate: new Date(),
+        startMonth: expense.firstPaymentDate.substring(0, 7), // Get YYYY-MM from YYYY-MM-DD
       });
     }
   }, [expense, form]);
 
-  async function onSubmit(values: z.infer<typeof formSchema>) {
+  async function onSubmit(values: FormValues) {
     try {
       setIsSubmitting(true);
+      const payload = {
+        ...values,
+        // Agregar el día 1 al mes seleccionado
+        firstPaymentDate: `${values.startMonth}-01`,
+      };
 
       if (expense) {
-        // Modo edición
-        await api.patch(`/cards/${cardId}/expenses/${expense.id}`, {
-          ...values,
-          firstPaymentDate: format(values.firstPaymentDate, "yyyy-MM-dd"),
-        });
+        await api.patch(`/cards/${cardId}/expenses/${expense.id}`, payload);
       } else {
-        // Modo creación
-        await api.post(`/cards/${cardId}/expenses`, {
-          ...values,
-          firstPaymentDate: format(values.firstPaymentDate, "yyyy-MM-dd"),
-        });
+        await api.post(`/cards/${cardId}/expenses`, payload);
       }
 
       toast({
@@ -226,39 +215,17 @@ export function CardExpenseDialog({
 
             <FormField
               control={form.control}
-              name="firstPaymentDate"
+              name="startMonth"
               render={({ field }) => (
-                <FormItem className="flex flex-col">
-                  <FormLabel>Fecha del Primer Pago</FormLabel>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <FormControl>
-                        <Button
-                          variant={"outline"}
-                          className={cn(
-                            "w-full pl-3 text-left font-normal",
-                            !field.value && "text-muted-foreground"
-                          )}
-                        >
-                          {field.value ? (
-                            format(field.value, "PPP", { locale: es })
-                          ) : (
-                            <span>Seleccionar fecha</span>
-                          )}
-                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                        </Button>
-                      </FormControl>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={field.value}
-                        onSelect={field.onChange}
-                        initialFocus
-                        locale={es}
-                      />
-                    </PopoverContent>
-                  </Popover>
+                <FormItem>
+                  <FormLabel>Mes de Inicio</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="month"
+                      {...field}
+                      onChange={(e) => field.onChange(e.target.value)}
+                    />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}

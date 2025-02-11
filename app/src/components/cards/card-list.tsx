@@ -1,31 +1,31 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Dispatch, SetStateAction } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { CreateCardDialog } from "./create-card-dialog";
 import { CardDetails } from "./card-details";
 import api from "@/lib/api/axios";
-
-interface Card {
-  id: string;
-  name: string;
-  bank: string;
-  creditLimit: number;
-  color: string;
-  lastFourDigits: string;
-  closingDay: number;
-  dueDay: number;
+import { Card } from "@/lib/types";
+interface CardListProps {
+  selectedCard: Card | null;
+  onCardSelect: Dispatch<SetStateAction<Card | null>>;
+  refreshTrigger: number;
+  onRefresh: () => void;
 }
 
-export function CardList() {
+export function CardList({
+  selectedCard,
+  onCardSelect,
+  refreshTrigger,
+  onRefresh,
+}: CardListProps) {
   const { toast } = useToast();
   const [cards, setCards] = useState<Card[]>([]);
-  const [selectedCard, setSelectedCard] = useState<Card | null>(null);
 
   useEffect(() => {
     fetchCards();
-  }, []);
+  }, [refreshTrigger]);
 
   async function fetchCards() {
     try {
@@ -60,7 +60,7 @@ export function CardList() {
                     ? "bg-green-600"
                     : "bg-red-600"
             }`}
-            onClick={() => setSelectedCard(card)}
+            onClick={() => onCardSelect(card)}
           >
             <div className="text-white">
               <div className="flex justify-between items-center mb-4">
@@ -90,7 +90,8 @@ export function CardList() {
       {selectedCard && (
         <CardDetails
           card={selectedCard}
-          onClose={() => setSelectedCard(null)}
+          onClose={() => onCardSelect(null)}
+          onRefresh={onRefresh}
         />
       )}
     </div>

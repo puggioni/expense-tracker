@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import {
@@ -27,6 +27,7 @@ import api from "@/lib/api/axios";
 import { Pencil, Trash2, PlusCircle } from "lucide-react";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { CardExpenseDialog } from "./create-card-expense-dialog";
+import { Card as CardType } from "@/lib/types";
 
 interface CardExpense {
   id: string;
@@ -47,19 +48,12 @@ interface MonthlyPayment {
 }
 
 interface CardDetailsProps {
-  card: {
-    id: string;
-    name: string;
-    bank: string;
-    creditLimit: number;
-    lastFourDigits: string;
-    closingDay: number;
-    dueDay: number;
-  };
+  card: CardType;
   onClose: () => void;
+  onRefresh: () => void;
 }
 
-export function CardDetails({ card, onClose }: CardDetailsProps) {
+export function CardDetails({ card, onClose, onRefresh }: CardDetailsProps) {
   const { toast } = useToast();
   const [expenses, setExpenses] = useState<CardExpense[]>([]);
   const [monthlyPayments, setMonthlyPayments] = useState<MonthlyPayment[]>([]);
@@ -70,12 +64,7 @@ export function CardDetails({ card, onClose }: CardDetailsProps) {
   const [isExpenseDialogOpen, setIsExpenseDialogOpen] = useState(false);
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
 
-  useEffect(() => {
-    fetchExpenses();
-    fetchMonthlyPayments();
-  }, []);
-
-  async function fetchExpenses() {
+  const fetchExpenses = useCallback(async () => {
     try {
       const response = await api.get<CardExpense[]>(
         `/cards/${card.id}/expenses`
@@ -88,9 +77,9 @@ export function CardDetails({ card, onClose }: CardDetailsProps) {
         description: "No se pudieron cargar los gastos",
       });
     }
-  }
+  }, [card.id, toast]);
 
-  async function fetchMonthlyPayments() {
+  const fetchMonthlyPayments = useCallback(async () => {
     try {
       const response = await api.get<MonthlyPayment[]>(
         `/cards/${card.id}/expenses/monthly`
@@ -103,7 +92,19 @@ export function CardDetails({ card, onClose }: CardDetailsProps) {
         description: "No se pudieron cargar los pagos mensuales",
       });
     }
-  }
+  }, [card.id, toast]);
+
+  useEffect(() => {
+    setExpenses([]);
+    setMonthlyPayments([]);
+    setExpenseToEdit(null);
+    setExpenseToDelete(null);
+    setIsExpenseDialogOpen(false);
+    setIsConfirmDialogOpen(false);
+
+    fetchExpenses();
+    fetchMonthlyPayments();
+  }, [card.id, fetchExpenses, fetchMonthlyPayments]);
 
   const usedLimit = expenses.reduce(
     (acc, exp) => acc + Number(exp.totalAmount),
