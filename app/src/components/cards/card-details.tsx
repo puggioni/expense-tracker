@@ -104,7 +104,6 @@ export function CardDetails({ card, onClose }: CardDetailsProps) {
       });
     }
   }
-  console.log(monthlyPayments);
 
   const usedLimit = expenses.reduce(
     (acc, exp) => acc + Number(exp.totalAmount),

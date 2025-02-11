@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
@@ -74,17 +74,33 @@ export function CardExpenseDialog({
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      description: expense?.description || "",
-      installmentAmount: expense?.installmentAmount || 0,
-      installments: expense?.installments || 1,
-      isRecurring: expense?.isRecurring || false,
-      firstPaymentDate: expense?.firstPaymentDate
-        ? new Date(expense.firstPaymentDate)
-        : new Date(),
+      description: "",
+      installmentAmount: 0,
+      installments: 1,
+      isRecurring: false,
+      firstPaymentDate: new Date(),
     },
   });
 
-  const isRecurring = form.watch("isRecurring");
+  useEffect(() => {
+    if (expense) {
+      form.reset({
+        description: expense.description,
+        installmentAmount: Number(expense.installmentAmount),
+        installments: expense.installments,
+        isRecurring: expense.isRecurring,
+        firstPaymentDate: new Date(expense.firstPaymentDate),
+      });
+    } else {
+      form.reset({
+        description: "",
+        installmentAmount: 0,
+        installments: 1,
+        isRecurring: false,
+        firstPaymentDate: new Date(),
+      });
+    }
+  }, [expense, form]);
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
