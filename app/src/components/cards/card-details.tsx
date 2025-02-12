@@ -28,6 +28,7 @@ import { Pencil, Trash2, PlusCircle } from "lucide-react";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { CardExpenseDialog } from "./create-card-expense-dialog";
 import { Card as CardType } from "@/lib/types";
+import { formatCurrency } from "@/lib/utils";
 
 interface CardExpense {
   id: string;
@@ -40,6 +41,7 @@ interface CardExpense {
   closingDate: string;
   dueDate: string;
   isPaid: boolean;
+  isUSD: boolean;
 }
 
 interface MonthlyPayment {
@@ -210,20 +212,18 @@ export function CardDetails({ card, onClose, onRefresh }: CardDetailsProps) {
                       <TableRow key={expense.id}>
                         <TableCell>{expense.description}</TableCell>
                         <TableCell>
+                          {expense.isRecurring ? "∞" : expense.installments}
+                        </TableCell>
+                        <TableCell>
+                          {formatCurrency(expense.installmentAmount)}
+                        </TableCell>
+                        <TableCell>
                           {expense.isRecurring
-                            ? "Recurrente"
-                            : `${expense.installments} cuotas`}
+                            ? "N/A"
+                            : formatCurrency(expense.totalAmount)}
                         </TableCell>
                         <TableCell>
-                          ${expense.installmentAmount.toLocaleString()}
-                        </TableCell>
-                        <TableCell>
-                          ${expense.totalAmount.toLocaleString()}
-                        </TableCell>
-                        <TableCell>
-                          {format(new Date(expense.dueDate), "PPP", {
-                            locale: es,
-                          })}
+                          {format(new Date(expense.dueDate), "dd/MM/yyyy")}
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
@@ -269,6 +269,10 @@ export function CardDetails({ card, onClose, onRefresh }: CardDetailsProps) {
                       tickFormatter={(value) =>
                         format(new Date(value), "MMM yyyy", { locale: es })
                       }
+                      interval={0}
+                      angle={-45}
+                      textAnchor="end"
+                      height={60}
                     />
                     <YAxis
                       tickFormatter={(value) =>

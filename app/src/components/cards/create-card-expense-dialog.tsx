@@ -12,6 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import {
   Form,
@@ -20,6 +21,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -49,6 +51,7 @@ const formSchema = z.object({
     .min(1, "El número de cuotas debe ser mayor a 0"),
   isRecurring: z.boolean(),
   startMonth: z.string().min(1, "El mes de inicio es requerido"), // YYYY-MM format
+  isUSD: z.boolean().default(false),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -94,13 +97,15 @@ export function CardExpenseDialog({
     }
   }, [expense, form]);
 
-  async function onSubmit(values: FormValues) {
+  async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
       setIsSubmitting(true);
+
+      // Creamos el payload omitiendo startMonth y agregando firstPaymentDate
+      const { startMonth, ...rest } = values;
       const payload = {
-        ...values,
-        // Agregar el día 1 al mes seleccionado
-        firstPaymentDate: `${values.startMonth}-01`,
+        ...rest,
+        firstPaymentDate: `${startMonth}-01`, // Convertimos YYYY-MM a YYYY-MM-DD
       };
 
       if (expense) {
@@ -137,6 +142,10 @@ export function CardExpenseDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{expense ? "Editar" : "Registrar"} Gasto</DialogTitle>
+          <DialogDescription className="text-yellow-500">
+            Los consumos en dólares se convertirán automáticamente a pesos
+            usando la cotización actual del dólar tarjeta.
+          </DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
@@ -231,10 +240,33 @@ export function CardExpenseDialog({
               )}
             />
 
+            <FormField
+              control={form.control}
+              name="isUSD"
+              render={({ field }) => (
+                <FormItem className="flex items-center justify-between rounded-lg border p-4">
+                  <div className="space-y-0.5">
+                    <FormLabel>Consumo en Dólares</FormLabel>
+                    <FormDescription>
+                      Se aplicará la cotización actual del dólar tarjeta
+                    </FormDescription>
+                  </div>
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+
             <div className="text-right">
-              <p className="text-sm text-muted-foreground mb-2">
-                Monto Total: ${totalAmount.toLocaleString()}
-              </p>
+              {form.watch("isUSD") && (
+                <p className="text-sm text-muted-foreground mb-2">
+                  Monto Total: ${totalAmount.toLocaleString()}
+                </p>
+              )}
               <Button type="submit" className="w-full" disabled={isSubmitting}>
                 {isSubmitting ? (
                   <>

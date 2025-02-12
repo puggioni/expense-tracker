@@ -1,5 +1,4 @@
-import { IsString, IsNumber, IsBoolean, IsDate, Min } from 'class-validator';
-import { Type } from 'class-transformer';
+import { IsString, IsNumber, IsBoolean, Min } from 'class-validator';
 
 export class CreateCardExpenseDto {
   @IsString()
@@ -16,7 +15,9 @@ export class CreateCardExpenseDto {
   @IsBoolean()
   isRecurring: boolean;
 
-  @Type(() => Date)
-  @IsDate()
-  firstPaymentDate: Date;
+  @IsString()
+  firstPaymentDate: string;
+
+  @IsBoolean()
+  isUSD: boolean;
 }

@@ -33,6 +33,9 @@ export class CardExpense {
   @Column({ default: false })
   isPaid: boolean;
 
+  @Column({ default: false })
+  isUSD: boolean;
+
   @ManyToOne(() => Card, (card) => card.expenses)
   card: Card;
 }

@@ -67,6 +67,7 @@ export interface CardExpense {
   closingDate: string;
   dueDate: string;
   isPaid: boolean;
+  isUSD: boolean;
 }
 
 export interface Card {

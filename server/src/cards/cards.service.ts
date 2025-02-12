@@ -7,6 +7,17 @@ import { CreateCardDto } from './dto/create-card.dto';
 import { CreateCardExpenseDto } from './dto/create-card-expense.dto';
 import { User } from '../users/entities/user.entity';
 import { addMonths, setDate } from 'date-fns';
+import { HttpService } from '@nestjs/axios';
+import { firstValueFrom } from 'rxjs';
+
+interface DolarResponse {
+  moneda: string;
+  casa: string;
+  nombre: string;
+  compra: number;
+  venta: number;
+  fechaActualizacion: string;
+}
 
 @Injectable()
 export class CardsService {
@@ -15,6 +26,7 @@ export class CardsService {
     private cardsRepository: Repository<Card>,
     @InjectRepository(CardExpense)
     private cardExpensesRepository: Repository<CardExpense>,
+    private readonly httpService: HttpService,
   ) {}
 
   async create(createCardDto: CreateCardDto, user: User): Promise<Card> {
@@ -65,6 +77,19 @@ export class CardsService {
     return { closingDate, dueDate };
   }
 
+  private async getDolarTarjetaRate(): Promise<number> {
+    try {
+      const { data } = await firstValueFrom(
+        this.httpService.get<DolarResponse>(
+          'https://dolarapi.com/v1/dolares/tarjeta',
+        ),
+      );
+      return data.venta;
+    } catch (error) {
+      throw new Error('No se pudo obtener la cotización del dólar tarjeta');
+    }
+  }
+
   async createExpense(
     cardId: string,
     createCardExpenseDto: CreateCardExpenseDto,
@@ -79,11 +104,17 @@ export class CardsService {
       card.dueDay,
     );
 
+    let finalAmount = createCardExpenseDto.installmentAmount;
+
+    if (createCardExpenseDto.isUSD) {
+      const dolarRate = await this.getDolarTarjetaRate();
+      finalAmount = createCardExpenseDto.installmentAmount * dolarRate;
+    }
+
     const expense = this.cardExpensesRepository.create({
       ...createCardExpenseDto,
-      totalAmount:
-        createCardExpenseDto.installmentAmount *
-        createCardExpenseDto.installments,
+      installmentAmount: finalAmount,
+      totalAmount: finalAmount * createCardExpenseDto.installments,
       firstPaymentDate,
       closingDate,
       dueDate,
@@ -143,21 +174,17 @@ export class CardsService {
       throw new NotFoundException('Gasto no encontrado');
     }
 
-    const firstPaymentDate = new Date(updateCardExpenseDto.firstPaymentDate);
-    const { closingDate, dueDate } = this.calculateClosingAndDueDates(
-      firstPaymentDate,
-      card.closingDay,
-      card.dueDay,
-    );
+    let finalAmount = updateCardExpenseDto.installmentAmount;
+
+    if (updateCardExpenseDto.isUSD) {
+      const dolarRate = await this.getDolarTarjetaRate();
+      finalAmount = updateCardExpenseDto.installmentAmount * dolarRate;
+    }
 
     Object.assign(expense, {
       ...updateCardExpenseDto,
-      totalAmount:
-        updateCardExpenseDto.installmentAmount *
-        updateCardExpenseDto.installments,
-      firstPaymentDate,
-      closingDate,
-      dueDate,
+      installmentAmount: finalAmount,
+      totalAmount: finalAmount * updateCardExpenseDto.installments,
     });
 
     return this.cardExpensesRepository.save(expense);
